@@ -1,55 +1,75 @@
 import pandas as pd
 import time
 import os
-import numpy as np 
 
-
+# ---------------------------------------------
 # 1. CONSTANTES DU PROJET
+# ---------------------------------------------
+BUDGET_MAX = 500000.0  # Budget maximal en F CFA (float)
 
-BUDGET_MAX = 500000
+# Chemins des fichiers disponibles
+FICHIERS_DISPONIBLES = {
+    '1': {'nom': 'data_test.csv', 'chemin': 'data/data_test.csv', 'description': 'Petit jeu de test (N=20) pour validation Force Brute.'},
+    '2': {'nom': 'dataset1_Python+P3.csv', 'chemin': 'data/dataset1_Python+P3.csv', 'description': 'Grand dataset 1 (N=958) pour test de performance.'},
+    '3': {'nom': 'dataset2_Python+P3.csv', 'chemin': 'data/dataset2_Python+P3.csv', 'description': 'Grand dataset 2 (N=781) pour test de performance.'}
+}
 
-# Chemins des fichiers 
-#NOM_DU_FICHIER_TEST = 'data/data_test.csv'
-#NOM_DU_FICHIER_DATA1 = 'data/dataset1_Python+P3.csv'
-NOM_DU_FICHIER_DATA2 = 'data/dataset2_Python+P3.csv'
+# ---------------------------------------------
+# 2. SÉLECTION INTERACTIVE DU FICHIER
+# ---------------------------------------------
 
- 
-# 2. FONCTION DE PRÉPARATION DES DONNÉES (CORRIGÉE)
+def choisir_fichier():
+    """
+    Demande à l'utilisateur de choisir l'un des datasets disponibles.
+    """
+    print("\n--- SÉLECTION DU JEU DE DONNÉES ---")
+    
+    # Affichage des options
+    for key, info in FICHIERS_DISPONIBLES.items():
+        print(f"   [{key}] {info['nom']} - ({info['description']})")
+    
+    choix = ''
+    while choix not in FICHIERS_DISPONIBLES:
+        choix = input("Entrez le numéro du fichier à analyser (1, 2 ou 3) : ")
+        if choix not in FICHIERS_DISPONIBLES:
+            print("Choix invalide. Veuillez entrer 1, 2 ou 3.")
+    
+    fichier_info = FICHIERS_DISPONIBLES[choix]
+    return fichier_info['chemin']
 
+# ---------------------------------------------
+# 3. FONCTION DE PRÉPARATION DES DONNÉES
+# ---------------------------------------------
 
 def preparer_donnees(nom_fichier):
     """
     Lit le fichier CSV, nettoie, calcule le profit réel et ajoute le ratio.
     """
-    print(f"\n ÉTAPE 1: PRÉPARATION DES DONNÉES ")
+    print(f"\n--- ÉTAPE 1: PRÉPARATION DES DONNÉES ---")
     print(f"-> Tentative de lecture du fichier: {nom_fichier}")
     
-
     if not os.path.exists(nom_fichier):
         print(f"ERREUR FATALE: Fichier '{nom_fichier}' non trouvé. Vérifiez le chemin 'data/' et le nom du fichier.")
         return None
     
     try:
-        # Tentative de lecture (latin-1 pour les accent et la langue française)
+        # Lecture avec encodage latin-1 pour gérer les caractères spéciaux
         df = pd.read_csv(nom_fichier, sep=';', encoding='latin-1')
     except Exception as e:
-        # df n'est pas assigné si une erreur survient ici
         print(f"ERREUR: Échec de la lecture du CSV (format ou encodage): {e}")
-        return None # Sortie si la lecture échoue
+        return None 
 
-    # 2.1 Renommage des colonnes (gestion des deux formats de fichiers)
+    # Renommage des colonnes (gestion des deux formats de fichiers)
     if 'Actions' in df.columns[0] or 'name' in df.columns[0]:
         df.columns = ['id', 'cost_str', 'profit_pct_str']
-    else:
-        print("Avertissement: Format de colonnes non reconnu. Le script tente de continuer.")
-
+    
     # 2.2 Conversion et Nettoyage
     
-    # Nettoyer et convertir la colonne de coût (enlève les caractères non numériques et convertit en float)
+    # Nettoyage et conversion de la colonne de coût
     df['cost'] = df['cost_str'].astype(str).str.replace(r'[^\d.]', '', regex=True) 
     df['cost'] = pd.to_numeric(df['cost'], errors='coerce') 
     
-    # Nettoyer et convertir la colonne de pourcentage (enlève %, remplace virgule par point)
+    # Nettoyage et conversion de la colonne de pourcentage
     df['profit_pct'] = df['profit_pct_str'].astype(str).str.replace('%', '', regex=False).str.replace(',', '.', regex=False)
     df['profit_pct'] = pd.to_numeric(df['profit_pct'], errors='coerce') / 100.0
     
@@ -67,16 +87,16 @@ def preparer_donnees(nom_fichier):
     # Calcul du critère Glouton : Ratio Profit/Coût
     df['ratio'] = df['profit_value'] / df['cost']
     
-    # Conversion en liste de dictionnaires
+    # Conversion en liste de dictionnaires pour l'algorithme
     actions = df[['id', 'cost', 'profit_value', 'ratio']].to_dict('records')
     
     print(f"-> {len(actions)} actions retenues pour l'analyse (après nettoyage).")
     return actions
 
 
-# 
-# 3. ALGORITHME GLOUTON (SOLUTION ALTERNATIVE OPTIMISÉE)
-# 
+# ---------------------------------------------
+# 4. ALGORITHME GLOUTON (SOLUTION OPTIMISÉE)
+# ---------------------------------------------
 
 def algorithme_glouton(actions, budget_max):
     """
@@ -84,7 +104,7 @@ def algorithme_glouton(actions, budget_max):
     basée sur le ratio Profit / Coût. Complexité O(N log N).
     """
     
-    # 1. Tri des actions : C'est l'étape clé du glouton.
+    # 1. Tri des actions : Clé de l'algorithme glouton.
     actions_triees = sorted(actions, key=lambda x: x['ratio'], reverse=True)
     
     budget_restant = budget_max
@@ -97,7 +117,7 @@ def algorithme_glouton(actions, budget_max):
         cost = action['cost']
         profit = action['profit_value']
         
-        # Le choix glouton : on prend l'action si elle rentre dans le budget restant.
+        # On prend l'action la plus "rentable" si elle rentre dans le budget
         if cost <= budget_restant:
             actions_selectionnees.append(action['id'])
             budget_restant -= cost
@@ -107,38 +127,38 @@ def algorithme_glouton(actions, budget_max):
     return actions_selectionnees, cout_total, profit_total
 
 
-# 
-# 4. EXÉCUTION ET AFFICHAGE DES RÉSULTATS
-# 
+# ---------------------------------------------
+# 5. EXÉCUTION PRINCIPALE
+# ---------------------------------------------
 
 if __name__ == "__main__":
     
-    # Utilisons le Dataset 1 pour montrer la rapidité
-    fichier_a_utiliser = NOM_DU_FICHIER_DATA2
+    # Étape 1: Demander à l'utilisateur de choisir le fichier
+    fichier_a_utiliser = choisir_fichier()
 
-    # 1. Préparer les données
+    # Étape 2: Préparer les données
     actions_a_traiter = preparer_donnees(fichier_a_utiliser)
 
     if actions_a_traiter:
         
-        print(f"\n DÉMARRAGE DE L'ANALYSE PAR ALGORITHME GLOUTON (sur {fichier_a_utiliser}) ")
+        print(f"\n--- DÉMARRAGE DE L'ANALYSE PAR ALGORITHME GLOUTON (sur {fichier_a_utiliser}) ---")
         
         start_time = time.time()
         
-        # 2. Exécuter l'algorithme
+        # Étape 3: Exécuter l'algorithme
         actions_selectionnees, cout_total, profit_total = algorithme_glouton(actions_a_traiter, BUDGET_MAX)
         
         end_time = time.time()
         temps_execution = end_time - start_time
         
-        # 3. Afficher les livrables
+        # Étape 4: Afficher les résultats
         print("\n==============================================")
         print("    RÉSULTAT (SOLUTION GLOUTONNE)")
         print("==============================================")
         print(f"Temps d'exécution: {temps_execution:.6f} secondes (Extrêmement rapide)")
         print(f"Fichier de données: {fichier_a_utiliser}")
         print(f"Budget Max. alloué: {BUDGET_MAX:,.2f} F CFA")
-        print("-")
+        print("----------------------------------------------")
         print(f"Coût Total des actions: {cout_total:,.2f} F CFA")
         print(f"Profit Total (après 2 ans): {profit_total:,.2f} F CFA")
         print(f"Nombre d'actions sélectionnées: {len(actions_selectionnees)}")
