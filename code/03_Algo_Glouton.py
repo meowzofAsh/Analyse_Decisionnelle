@@ -3,16 +3,17 @@ import time
 import os
 
 # ---------------------------------------------
-# 1. CONSTANTES DU PROJET
+# 1. CONSTANTES ET DONNÉES DE RÉFÉRENCE
 # ---------------------------------------------
 BUDGET_MAX = 500000.0  # Budget maximal en F CFA (float)
 
 # Chemins des fichiers disponibles
 FICHIERS_DISPONIBLES = {
-    '1': {'nom': 'data_test.csv', 'chemin': 'data/data_test.csv', 'description': 'Petit jeu de test (N=20) pour validation Force Brute.'},
+    '1': {'nom': 'data_test.csv', 'chemin': 'data/data_test.csv', 'description': 'Petit jeu de test (N=20) pour validation.'},
     '2': {'nom': 'dataset1_Python+P3.csv', 'chemin': 'data/dataset1_Python+P3.csv', 'description': 'Grand dataset 1 (N=958) pour test de performance.'},
     '3': {'nom': 'dataset2_Python+P3.csv', 'chemin': 'data/dataset2_Python+P3.csv', 'description': 'Grand dataset 2 (N=781) pour test de performance.'}
 }
+
 
 # ---------------------------------------------
 # 2. SÉLECTION INTERACTIVE DU FICHIER
@@ -22,17 +23,24 @@ def choisir_fichier():
     """
     Demande à l'utilisateur de choisir l'un des datasets disponibles.
     """
-    print("\n--- SÉLECTION DU JEU DE DONNÉES ---")
+    print("\n==============================================")
+    print("      SÉLECTION DU JEU DE DONNÉES")
+    print("==============================================")
     
     # Affichage des options
     for key, info in FICHIERS_DISPONIBLES.items():
-        print(f"   [{key}] {info['nom']} - ({info['description']})")
+        print(f"  [{key}] {info['nom']} - ({info['description']})")
+    print("  [Q] Quitter l'application")
+    print("----------------------------------------------")
     
     choix = ''
-    while choix not in FICHIERS_DISPONIBLES:
-        choix = input("Entrez le numéro du fichier à analyser (1, 2 ou 3) : ")
-        if choix not in FICHIERS_DISPONIBLES:
-            print("Choix invalide. Veuillez entrer 1, 2 ou 3.")
+    while choix not in FICHIERS_DISPONIBLES and choix.upper() != 'Q':
+        choix = input("Entrez le numéro du fichier (1, 2, 3) ou 'Q' : ").upper()
+        if choix not in FICHIERS_DISPONIBLES and choix != 'Q':
+            print("Choix invalide. Veuillez entrer 1, 2, 3 ou Q.")
+    
+    if choix == 'Q':
+        return None  # Signal pour quitter
     
     fichier_info = FICHIERS_DISPONIBLES[choix]
     return fichier_info['chemin']
@@ -66,6 +74,7 @@ def preparer_donnees(nom_fichier):
     # 2.2 Conversion et Nettoyage
     
     # Nettoyage et conversion de la colonne de coût
+    # Supprime tout sauf les chiffres et le point (pour les décimales)
     df['cost'] = df['cost_str'].astype(str).str.replace(r'[^\d.]', '', regex=True) 
     df['cost'] = pd.to_numeric(df['cost'], errors='coerce') 
     
@@ -102,9 +111,17 @@ def algorithme_glouton(actions, budget_max):
     """
     Résout le problème du Sac à Dos 0/1 en utilisant une stratégie gloutonne 
     basée sur le ratio Profit / Coût. Complexité O(N log N).
+    
+    Args:
+        actions (list): Liste des actions (dictionnaires).
+        budget_max (float): Budget maximum disponible.
+        
+    Returns:
+        tuple: (Liste des IDs d'actions sélectionnées, coût total, profit total).
     """
     
     # 1. Tri des actions : Clé de l'algorithme glouton.
+    # Tri par ratio décroissant (du meilleur rendement au moins bon)
     actions_triees = sorted(actions, key=lambda x: x['ratio'], reverse=True)
     
     budget_restant = budget_max
@@ -133,39 +150,57 @@ def algorithme_glouton(actions, budget_max):
 
 if __name__ == "__main__":
     
-    # Étape 1: Demander à l'utilisateur de choisir le fichier
-    fichier_a_utiliser = choisir_fichier()
+    en_cours = True
+    while en_cours:
+        
+        # Étape 1: Demander à l'utilisateur de choisir le fichier
+        fichier_a_utiliser = choisir_fichier()
+        
+        if fichier_a_utiliser is None:
+            en_cours = False # L'utilisateur a choisi de quitter
+            continue
 
-    # Étape 2: Préparer les données
-    actions_a_traiter = preparer_donnees(fichier_a_utiliser)
+        # Étape 2: Préparer les données
+        actions_a_traiter = preparer_donnees(fichier_a_utiliser)
 
-    if actions_a_traiter:
+        if actions_a_traiter:
+            
+            print(f"\n--- DÉMARRAGE DE L'ANALYSE PAR ALGORITHME GLOUTON (sur {fichier_a_utiliser}) ---")
+            
+            start_time = time.time()
+            
+            # Étape 3: Exécuter l'algorithme
+            actions_selectionnees, cout_total, profit_total = algorithme_glouton(actions_a_traiter, BUDGET_MAX)
+            
+            end_time = time.time()
+            temps_execution = end_time - start_time
+            
+            # Étape 4: Afficher les résultats du Glouton
+            print("\n==============================================")
+            print("      RÉSULTAT (SOLUTION GLOUTONNE)")
+            print("==============================================")
+            print(f"Temps d'exécution: {temps_execution:.6f} secondes (Extrêmement rapide)")
+            print(f"Fichier de données: {fichier_a_utiliser}")
+            print(f"Budget Max. alloué: {BUDGET_MAX:,.2f} F CFA")
+            print("----------------------------------------------")
+            print(f"Coût Total des actions: {cout_total:,.2f} F CFA")
+            print(f"Profit Total (après 2 ans): {profit_total:,.2f} F CFA")
+            print(f"Nombre d'actions sélectionnées: {len(actions_selectionnees)}")
+            
+            print("\nListe COMPLÈTE des actions sélectionnées par le Glouton:")
+            # Affiche la liste des actions sélectionnées
+            for action_id in actions_selectionnees:
+                print(f"- {action_id}")
+            print("==============================================")
+
+        # ------------------------------------------------
+        # Choix de continuer ou de quitter après les résultats
+        # ------------------------------------------------
+        action = ''
+        print("\n----------------------------------------------")
+        while action.upper() not in ['C', 'Q']:
+            action = input("Voulez-vous [C]Choisir un autre fichier ou [Q]Quitter ? ").upper()
         
-        print(f"\n--- DÉMARRAGE DE L'ANALYSE PAR ALGORITHME GLOUTON (sur {fichier_a_utiliser}) ---")
-        
-        start_time = time.time()
-        
-        # Étape 3: Exécuter l'algorithme
-        actions_selectionnees, cout_total, profit_total = algorithme_glouton(actions_a_traiter, BUDGET_MAX)
-        
-        end_time = time.time()
-        temps_execution = end_time - start_time
-        
-        # Étape 4: Afficher les résultats
-        print("\n==============================================")
-        print("    RÉSULTAT (SOLUTION GLOUTONNE)")
-        print("==============================================")
-        print(f"Temps d'exécution: {temps_execution:.6f} secondes (Extrêmement rapide)")
-        print(f"Fichier de données: {fichier_a_utiliser}")
-        print(f"Budget Max. alloué: {BUDGET_MAX:,.2f} F CFA")
-        print("----------------------------------------------")
-        print(f"Coût Total des actions: {cout_total:,.2f} F CFA")
-        print(f"Profit Total (après 2 ans): {profit_total:,.2f} F CFA")
-        print(f"Nombre d'actions sélectionnées: {len(actions_selectionnees)}")
-        
-        print("\nListe des actions sélectionnées (premières affichées):")
-        for action_id in actions_selectionnees[:10]:
-            print(f"- {action_id}")
-        if len(actions_selectionnees) > 10:
-             print(f"... et {len(actions_selectionnees) - 10} autres actions.")
-        print("==============================================")
+        if action == 'Q':
+            en_cours = False
+            print("\n--- Application terminée. Au revoir ! ---")
