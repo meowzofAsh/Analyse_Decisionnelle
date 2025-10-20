@@ -1,0 +1,65 @@
+=========================================================
+RAPPORT D'ESSAI ALGORITHMIQUE : FORCE BRUTE vs GLOUTON
+=========================================================
+
+PROBLÉMATIQUE :
+Déterminer le meilleur compromis entre la vitesse d'exécution et la maximisation du profit dans la sélection d'actions (problème du Sac à Dos 0/1) sous une contrainte budgétaire stricte (500 000 F CFA).
+
+SOLUTIONS IMPLÉMENTÉES :
+1. Solution de Référence (Optimalité garantie) : Algorithme de Force Brute (FB).
+2. Solution Optimisée (Performance) : Algorithme Glouton (Basé sur le ratio Profit/Coût).
+
+---------------------------------------------------------
+A. ANALYSE THÉORIQUE (COMPLEXITÉ BIG-O)
+---------------------------------------------------------
+
+| Algorithme | Complexité Temps | Optimalité | Justification
+|------------|------------------|------------|---------------------------------
+| Force Brute| O(2^N)           | Oui        | Teste toutes les combinaisons.
+| Glouton    | O(N log N)       | Non        | Tri et parcours unique.
+
+Conclusion Théorique : L'explosion exponentielle de la FB (2^N) la rend impraticable pour N > 25. La complexité quasi-linéaire du Glouton (N log N) en fait la seule solution viable pour les grands datasets (N=958).
+
+---------------------------------------------------------
+B. RÉSULTATS EXPÉRIMENTAUX ET COMPARAISONS
+---------------------------------------------------------
+
+B.1. TABLEAU DE VALIDATION (Fichier : data_test.csv, N=20)
+-----------------------------------------------------------
+
+| Algorithme | N | Temps d'Exécution (s) | Coût Total (F CFA) | Profit Total (F CFA) |
+|------------|---|-----------------------|--------------------|----------------------|
+| Force Brute| 20| 6.6500 s              | 498 000.00         | 99 080.00 (Optimal)  |
+| Glouton    | 20| 0.000043 s            | 498 000.00         | 97 480.00            |
+
+Analyse de Validation :
+- La FB confirme l'optimum à 99 080.00 F CFA.
+- Le Glouton est **150 000 fois plus rapide** (6.65s vs 0.000043s), mais son profit est légèrement inférieur (97 480.00 F CFA), ce qui confirme sa nature sub-optimale.
+
+B.2. TABLEAU DE PERFORMANCE (Fichiers : Datasets complets)
+----------------------------------------------------------
+
+| Fichier | N | Algorithme | Temps (s) | Coût Total (F CFA) | Profit Total (F CFA) |
+|---------|---|------------|-----------|--------------------|----------------------|
+| Dataset 1| 958| Glouton    | 0.000659  | 499 940.00         | 198 507.80           |
+| Dataset 2| 781| Glouton    | 0.000647  | 499 990.00         | 198 231.45           |
+
+Conclusion de Performance : Le Glouton traite près de 1000 actions en moins d'une milliseconde, prouvant son efficacité pour le contexte industriel.
+
+---------------------------------------------------------
+C. COMPARAISON CRITIQUE AVEC LES RÉSULTATS "SIENNA"
+---------------------------------------------------------
+
+Résultat Sienna (Optimal de référence) pour Dataset 1 :
+- Coût Total : 498 760 F CFA
+- Profit Total : 196 610 F CFA
+
+Comparaison (Glouton vs Sienna sur Dataset 1) :
+- Profit Glouton : 198 507.80 F CFA
+- Profit Sienna : 196 610.00 F CFA
+
+Analyse Critique :
+La solution Gloutonne a généré un profit de **1 897.80 F CFA de plus** que le résultat de référence "Sienna". Cela suggère que :
+1. Soit le résultat "Sienna" n'était pas l'optimum absolu.
+2. Soit l'efficacité du critère glouton pour ce jeu de données est exceptionnellement élevée.
+Dans les deux cas, la solution Glouton est la meilleure solution pratique retenue.
