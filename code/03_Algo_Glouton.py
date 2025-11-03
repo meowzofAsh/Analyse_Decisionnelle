@@ -1,6 +1,37 @@
 import pandas as pd
 import time
 import os
+import sys # Ajout pour l'estimation de la mémoire
+
+# ---------------------------------------------
+# 0. OUTIL D'ESTIMATION DE L'ESPACE MÉMOIRE
+# ---------------------------------------------
+
+def get_deep_size(obj, seen=None):
+    """
+    Estime la taille mémoire récursive d'un objet en octets.
+    Nécessaire pour calculer la taille réelle d'une liste de dictionnaires.
+    """
+    if seen is None:
+        seen = set()
+    
+    # Évite les références circulaires (important en Python)
+    obj_id = id(obj)
+    if obj_id in seen:
+        return 0
+    seen.add(obj_id)
+    
+    # Taille de l'objet lui-même
+    size = sys.getsizeof(obj)
+    
+    # Si c'est un conteneur, ajoute la taille de ses éléments
+    if isinstance(obj, dict):
+        size += sum(get_deep_size(v, seen) + get_deep_size(k, seen) for k, v in obj.items())
+    elif isinstance(obj, (list, tuple, set)):
+        size += sum(get_deep_size(item, seen) for item in obj)
+    
+    return size
+
 
 # ---------------------------------------------
 # 1. CONSTANTES ET DONNÉES DE RÉFÉRENCE
@@ -74,7 +105,6 @@ def preparer_donnees(nom_fichier):
     # 2.2 Conversion et Nettoyage
     
     # Nettoyage et conversion de la colonne de coût
-    # Supprime tout sauf les chiffres et le point (pour les décimales)
     df['cost'] = df['cost_str'].astype(str).str.replace(r'[^\d.]', '', regex=True) 
     df['cost'] = pd.to_numeric(df['cost'], errors='coerce') 
     
@@ -117,12 +147,17 @@ def algorithme_glouton(actions, budget_max):
         budget_max (float): Budget maximum disponible.
         
     Returns:
-        tuple: (Liste des IDs d'actions sélectionnées, coût total, profit total).
+        tuple: (IDs d'actions sélectionnées, coût total, profit total, espace_trie_bytes).
     """
     
-    # 1. Tri des actions : Clé de l'algorithme glouton.
+    # 1. Tri des actions : Clé de l'algorithme glouton (O(N log N) en temps, O(N) en espace auxiliaire)
     # Tri par ratio décroissant (du meilleur rendement au moins bon)
     actions_triees = sorted(actions, key=lambda x: x['ratio'], reverse=True)
+    
+    # --- CALCUL DE L'ESPACE AUXILIAIRE O(N) ---
+    # La liste triée est la structure qui consomme le plus d'espace auxiliaire dans l'algorithme.
+    # C'est l'espace O(N) car on crée une copie triée de la liste d'entrée.
+    espace_trie_bytes = get_deep_size(actions_triees)
     
     budget_restant = budget_max
     actions_selectionnees = []
@@ -141,7 +176,7 @@ def algorithme_glouton(actions, budget_max):
             cout_total += cost
             profit_total += profit
             
-    return actions_selectionnees, cout_total, profit_total
+    return actions_selectionnees, cout_total, profit_total, espace_trie_bytes
 
 
 # ---------------------------------------------
@@ -162,6 +197,7 @@ if __name__ == "__main__":
 
         # Étape 2: Préparer les données
         actions_a_traiter = preparer_donnees(fichier_a_utiliser)
+        N = len(actions_a_traiter)
 
         if actions_a_traiter:
             
@@ -170,22 +206,29 @@ if __name__ == "__main__":
             start_time = time.time()
             
             # Étape 3: Exécuter l'algorithme
-            actions_selectionnees, cout_total, profit_total = algorithme_glouton(actions_a_traiter, BUDGET_MAX)
+            actions_selectionnees, cout_total, profit_total, espace_trie_bytes = algorithme_glouton(actions_a_traiter, BUDGET_MAX)
             
             end_time = time.time()
             temps_execution = end_time - start_time
+            
+            # Le calcul de l'espace O(N) est déjà fait dans la fonction
             
             # Étape 4: Afficher les résultats du Glouton
             print("\n==============================================")
             print("      RÉSULTAT (SOLUTION GLOUTONNE)")
             print("==============================================")
-            print(f"Temps d'exécution: {temps_execution:.6f} secondes (Extrêmement rapide)")
             print(f"Fichier de données: {fichier_a_utiliser}")
+            print(f"Nombre d'actions d'entrée (N): {N}")
             print(f"Budget Max. alloué: {BUDGET_MAX:,.2f} F CFA")
             print("----------------------------------------------")
             print(f"Coût Total des actions: {cout_total:,.2f} F CFA")
             print(f"Profit Total (après 2 ans): {profit_total:,.2f} F CFA")
             print(f"Nombre d'actions sélectionnées: {len(actions_selectionnees)}")
+            print("----------------------------------------------")
+            print(f"Temps d'exécution (Complexité O(N log N)): {temps_execution:.6f} secondes")
+            # AFFICHAGE DE L'ESPACE MÉMOIRE AUXILIAIRE O(N)
+            print(f"Espace mémoire auxiliaire (Complexité O(N)): {espace_trie_bytes:,} octets") 
+            print("----------------------------------------------")
             
             print("\nListe COMPLÈTE des actions sélectionnées par le Glouton:")
             # Affiche la liste des actions sélectionnées

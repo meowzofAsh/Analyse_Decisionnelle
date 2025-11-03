@@ -63,3 +63,5 @@ La solution Gloutonne a généré un profit de **1 897.80 F CFA de plus** que le
 1. Soit le résultat "Sienna" n'était pas l'optimum absolu.
 2. Soit l'efficacité du critère glouton pour ce jeu de données est exceptionnellement élevée.
 Dans les deux cas, la solution Glouton est la meilleure solution pratique retenue.
+
+
